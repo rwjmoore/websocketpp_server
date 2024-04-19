@@ -1,6 +1,8 @@
 #include <websocketpp/config/asio_no_tls.hpp>
-
 #include <websocketpp/server.hpp>
+
+#include <turbojpeg.h>
+#include <opencv2/opencv.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -8,10 +10,9 @@
 #include <streambuf>
 #include <string>
 
-//argument for running
+#include <cstddef>
 
-//C:\Users\Randy\source\repos\websocketpp_server\x64\Debug\websocketpp_server.exe "C:\Users\Randy\source\repos\websocketpp_server\websocketpp_server\index.html" 9002
-
+enum class byte : unsigned char {};
 /**
  * The telemetry server accepts connections and sends a message every second to
  * each client containing an integer count. This example can be used as the
@@ -55,14 +56,145 @@ std::vector<uint8_t> hexStringToByteArray(const std::string& hexString)
     return byteArray;
 }
 
+//-----------------------------------------> Utilities End <----------------------------------------
 
 
+// -------------------------------------------------------> IMAGE DECODER  <------------------------------------------------------------------------------
+
+//Quesitons: What is the datalength? What should we set dataByteSize to? What is the size variable? What is recievedLength? What is dataID? 
+
+class decoder {
+    int dataByteSize = 1000000; /////////////////////////////////////////////////must change this
+    int dataID = 0;
+    int dataLength = 0;
+    int receivedLength = 0;
+    int label = 1001;
+    bool GZipMode = false;
+
+public:
+    void decodeFunc(uint8_t* im, int size) {
+        // Create decoder
+        tjhandle turbojpeg;
+        turbojpeg = tjInitDecompress();
+        if (turbojpeg == nullptr) {
+            std::cerr << "Error initializing TurboJPEG" << std::endl;
+            delete im;
+            return;
+        }
+
+        int width, height, subsamp, colorspace;
+        if (tjDecompressHeader3(turbojpeg, im, size, &width, &height, &subsamp, &colorspace) != 0) {
+            std::cerr << "Error getting JPEG header" << std::endl;
+            delete im;
+            return;
+        }
+        std::cout << "Successfully read header with dimension (" << width << " x " << height << "), subsampling " << subsamp << ", and color space " << colorspace << ". Image size " << size << std::endl;
+
+        // Allocate buffer for the decompressed image
+        std::vector<unsigned char> imageBuffer(width * height * tjPixelSize[TJPF_BGRX]);
+
+        // Decompress the JPEG stream
+        if (tjDecompress2(turbojpeg, im, size, imageBuffer.data(), width, 0, height, TJPF_BGRX, TJFLAG_BOTTOMUP) != 0) {
+            std::cerr << "Error decompressing JPEG" << std::endl;
+            delete im;
+            return;
+        }
+
+        // DO SOMETHING WITH THE DECODED IMAGE
+        cv::Mat decodedImage = cv::Mat(width,height, CV_32F, imageBuffer.data());
+        cv::imshow("test",decodedImage);
+        cv::waitKey();
+        
+        tjDestroy(turbojpeg);
+        delete im;
+    }
+
+    uint16_t byte2uint16(uint8_t* d, int offset) {
+        return d[offset] | (d[offset + 1] << 8);
+    }
+    uint32_t byte2uint32(uint8_t* d, int offset) {
+        return d[offset] | (d[offset + 1] << 8) | (d[offset + 2] << 16) | (d[offset + 3] << 24);
+    }
+
+    void handlePackets(std::vector<uint8_t> bytes) {
+        // USING TURBOJPEG
+        
+        uint8_t* d = reinterpret_cast<uint8_t*>(bytes.data());
+
+        if (bytes.size() <= 14) {
+            std::cout << "Received too small chunk";
+            return;
+        }
+
+        uint16_t _label = byte2uint16(d, 0);
+        if (_label != label) {
+            std::cout << "Incorrect label";
+            return;
+        }
+        uint16_t _dataID = byte2uint16(d, 2);
+        
+        if (_dataID != dataID) receivedLength = 0;
+        dataID = _dataID;
+        uint32_t dataLength = byte2uint32(d, 4);
+        int _offset = byte2uint32(d, 8);
+
+        GZipMode = d[12] == 1;
+        if (GZipMode) {
+            std::cerr << "Should not be in GZip Mode" << std::endl;
+            return;
+        }
+
+        int ColorReductionLevel = (int)d[13];
+        int metaByteLength = 15;
+
+        // New image incoming: If the size has changed, reset the buffer. Otherwise just overwrite it
+        if (receivedLength == 0) {
+            int imageSize = dataLength;
+            if (imageSize > dataByteSize) {
+                std::cout << "Image larger than allocated space. Reallocating..." << std::endl;
+                if (dataByte != nullptr) {
+                    delete[] dataByte;
+                }
+                dataByte = new uint8_t[imageSize];
+            }
+            std::cout << "Starting to read in new image with length " << dataLength << std::endl;
+        }
+
+        // Add new data to end of chunks received so far
+        int chunkLength = bytes.size() - metaByteLength;
+        if (_offset + chunkLength <= dataLength)
+        {
+            receivedLength += chunkLength;
+            //std::cout << "ReceivedLength: " << receivedLength << std::endl;
+            memcpy(dataByte + _offset, d + metaByteLength, chunkLength);
+        }
+
+        if (receivedLength == dataLength)
+        {
+            // Spawn a short-lived thread to decode the image
+            // Create local copies of the relevant variables to work with in a thread without them changing
+            uint8_t* im = new uint8_t[dataLength];
+            memcpy(im, dataByte, dataLength);
+            int size = dataLength;
+            //decodeFunc(im, size);
+            std::thread(&decoder::decodeFunc, this, im, size).detach(); // Don't wait for the thread
+        }
+
+    }
+
+private:
+    uint8_t* dataByte = new uint8_t[16384];
+};
+//--------------------------------------> Image Decoder End <-----------------------------------------------------
+
+// ------------------------------------> Telemetry Server <-------------------------------------------------------
 class telemetry_server {
 public:
     typedef websocketpp::connection_hdl connection_hdl;
     typedef websocketpp::server<websocketpp::config::asio> server;
     typedef server::message_ptr message_ptr;
 
+    decoder imDecoder; 
 
     telemetry_server() : m_count(0) {
         // set up access channels to only log interesting things
@@ -196,15 +328,16 @@ public:
     void on_close(connection_hdl hdl) {
         m_connections.erase(hdl);
     }
+
     //Action Performed on messageRecieved
     void onMessage(connection_hdl hdl, message_ptr msg) {
-        std::cout << "message Recieved";
+        std::cout << "message Recieved\n";
         std::string message = websocketpp::utility::to_hex(msg->get_payload());
         std::vector<uint8_t> bytes = hexStringToByteArray(message);
+        imDecoder.handlePackets(bytes);
         //std::cout << "message is: " << message;
-
-
     }
+
 private:
     typedef std::set<connection_hdl, std::owner_less<connection_hdl>> con_list;
 
@@ -228,7 +361,7 @@ int main(int argc, char* argv[]) {
     uint16_t port = 9002;
 
     if (argc == 1) {
-        std::cout << "Non commandline interface triggered ... Usage: telemetry_server [documentroot] [port] for commandline" << std::endl;
+        std::cout << "No arguments supplied ... Usage: telemetry_server [documentroot] [port] for commandline" << std::endl;
         
     }
 
