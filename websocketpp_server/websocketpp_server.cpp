@@ -11,17 +11,10 @@
 #include <string>
 
 #include <cstddef>
-
-enum class byte : unsigned char {};
 /**
- * The telemetry server accepts connections and sends a message every second to
- * each client containing an integer count. This example can be used as the
- * basis for programs that expose a stream of telemetry data for logging,
- * dashboards, etc.
+ * The telemetry server accepts connections and sends a message to
+ * each client containing an integer count. 
  *
- * This example uses the timer based concurrency method and is self contained
- * and singled threaded. Refer to telemetry client for an example of a similar
- * telemetry setup using threads rather than timers.
  *
  * This example also includes an example simple HTTP server that serves a web
  * dashboard displaying the count. This simple design is suitable for use
@@ -56,15 +49,24 @@ std::vector<uint8_t> hexStringToByteArray(const std::string& hexString)
     return byteArray;
 }
 
+// Function to convert a string of hexadecimal values to a vector of bytes
+std::vector<byte> hexStringToBytes(const std::string& hexString) {
+    std::vector<byte> bytes;
+    for (size_t i = 0; i < hexString.length(); i += 2) {
+        std::string byteString = hexString.substr(i, 2);
+        byte b = static_cast<byte>(std::stoul(byteString, nullptr, 16));
+        bytes.push_back(b);
+    }
+    return bytes;
+}
+
 //-----------------------------------------> Utilities End <----------------------------------------
 
 
 // -------------------------------------------------------> IMAGE DECODER  <------------------------------------------------------------------------------
 
-//Quesitons: What is the datalength? What should we set dataByteSize to? What is the size variable? What is recievedLength? What is dataID? 
-
 class decoder {
-    int dataByteSize = 1000000; /////////////////////////////////////////////////must change this
+    int dataByteSize = 1000000; ///////unsure what this should be, so set this very large 
     int dataID = 0;
     int dataLength = 0;
     int receivedLength = 0;
@@ -100,10 +102,15 @@ public:
             return;
         }
 
-        // DO SOMETHING WITH THE DECODED IMAGE
-        cv::Mat decodedImage = cv::Mat(width,height, CV_32F, imageBuffer.data());
+        // DO SOMETHING WITH THE DECODED IMAGE (in this case, show in openCV)
+        cv::Mat decodedImage = cv::Mat(height,width, CV_8UC4, imageBuffer.data());
+        cv::flip(decodedImage, decodedImage, 0); //vertically flip the image
+        int targetWidth = 800;
+        int targetHeight = 600;
+        cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight));
+
         cv::imshow("test",decodedImage);
-        cv::waitKey();
+        cv::waitKey(1);
         
         tjDestroy(turbojpeg);
         delete im;
@@ -116,7 +123,7 @@ public:
         return d[offset] | (d[offset + 1] << 8) | (d[offset + 2] << 16) | (d[offset + 3] << 24);
     }
 
-    void handlePackets(std::vector<uint8_t> bytes) {
+    void handlePackets(std::vector<byte> bytes) {
         // USING TURBOJPEG
         
         uint8_t* d = reinterpret_cast<uint8_t*>(bytes.data());
@@ -176,8 +183,8 @@ public:
             uint8_t* im = new uint8_t[dataLength];
             memcpy(im, dataByte, dataLength);
             int size = dataLength;
-            //decodeFunc(im, size);
-            std::thread(&decoder::decodeFunc, this, im, size).detach(); // Don't wait for the thread
+            decodeFunc(im, size);
+            //std::thread(&decoder::decodeFunc, this, im, size).detach(); // Don't wait for the thread
         }
 
     }
@@ -333,7 +340,7 @@ public:
     void onMessage(connection_hdl hdl, message_ptr msg) {
         std::cout << "message Recieved\n";
         std::string message = websocketpp::utility::to_hex(msg->get_payload());
-        std::vector<uint8_t> bytes = hexStringToByteArray(message);
+        std::vector<byte> bytes = hexStringToBytes(message);
         imDecoder.handlePackets(bytes);
         //std::cout << "message is: " << message;
     }
