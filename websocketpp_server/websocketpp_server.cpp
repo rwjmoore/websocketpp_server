@@ -105,9 +105,9 @@ public:
         // DO SOMETHING WITH THE DECODED IMAGE (in this case, show in openCV)
         cv::Mat decodedImage = cv::Mat(height,width, CV_8UC4, imageBuffer.data());
         cv::flip(decodedImage, decodedImage, 0); //vertically flip the image
-        int targetWidth = 800;
-        int targetHeight = 600;
-        cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight));
+        int targetWidth = 700;
+        int targetHeight = 550;
+        cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight), 0.0, 0.0, cv::INTER_CUBIC);
 
         cv::imshow("test",decodedImage);
         cv::waitKey(1);
@@ -365,7 +365,7 @@ int main(int argc, char* argv[]) {
     telemetry_server s;
 
     std::string docroot;
-    uint16_t port = 9002;
+    uint16_t port = 9003;
 
     if (argc == 1) {
         std::cout << "No arguments supplied ... Usage: telemetry_server [documentroot] [port] for commandline" << std::endl;
