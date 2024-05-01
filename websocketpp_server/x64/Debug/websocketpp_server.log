@@ -2,8 +2,8 @@
 C:\dev\vcpkg\installed\x64-windows\include\websocketpp\frame.hpp(834,13): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
 C:\dev\vcpkg\installed\x64-windows\include\websocketpp\common\md5.hpp(367,29): warning C4267: '+=': conversion from 'size_t' to 'websocketpp::md5::md5_word_t', possible loss of data
 C:\dev\vcpkg\installed\x64-windows\include\websocketpp\sha1\sha1.hpp(176,24): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-C:\Users\Randy\source\repos\websocketpp_server\websocketpp_server\websocketpp_server.cpp(171,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\Randy\source\repos\websocketpp_server\websocketpp_server\websocketpp_server.cpp(172,35): warning C4018: '<=': signed/unsigned mismatch
+C:\Users\Randy\source\repos\websocketpp_server\websocketpp_server\websocketpp_server.cpp(172,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Randy\source\repos\websocketpp_server\websocketpp_server\websocketpp_server.cpp(173,35): warning C4018: '<=': signed/unsigned mismatch
   websocketpp_server.vcxproj -> C:\Users\Randy\source\repos\websocketpp_server\x64\Debug\websocketpp_server.exe
   'pwsh.exe' is not recognized as an internal or external command,
   operable program or batch file.

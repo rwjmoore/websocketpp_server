@@ -72,9 +72,12 @@ class decoder {
     int receivedLength = 0;
     int label = 1001;
     bool GZipMode = false;
+    int targetWidth = 700;
+    int targetHeight = 550;
+    cv::Mat decodedIm = cv::Mat(targetWidth, targetHeight, CV_8UC4);
 
 public:
-    void decodeFunc(uint8_t* im, int size) {
+    void decodeFunc(uint8_t* im, cv::Mat& destination, int size) {
         // Create decoder
         tjhandle turbojpeg;
         turbojpeg = tjInitDecompress();
@@ -105,15 +108,13 @@ public:
         // DO SOMETHING WITH THE DECODED IMAGE (in this case, show in openCV)
         cv::Mat decodedImage = cv::Mat(height,width, CV_8UC4, imageBuffer.data());
         cv::flip(decodedImage, decodedImage, 0); //vertically flip the image
-        int targetWidth = 700;
-        int targetHeight = 550;
         cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight), 0.0, 0.0, cv::INTER_CUBIC);
 
-        cv::imshow("test",decodedImage);
-        cv::waitKey(1);
+        destination = decodedImage.clone();
         
         tjDestroy(turbojpeg);
         delete im;
+
     }
 
     uint16_t byte2uint16(uint8_t* d, int offset) {
@@ -183,9 +184,12 @@ public:
             uint8_t* im = new uint8_t[dataLength];
             memcpy(im, dataByte, dataLength);
             int size = dataLength;
-            decodeFunc(im, size);
-            //std::thread(&decoder::decodeFunc, this, im, size).detach(); // Don't wait for the thread
+            //decodeFunc(im,decodedIm, size);
+            std::thread(&decoder::decodeFunc, this, im, std::ref(decodedIm), size).detach(); // Don't wait for the thread
+
         }
+        cv::imshow("test", decodedIm);
+        cv::waitKey(1);
 
     }
 
