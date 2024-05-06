@@ -1,7 +1,7 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 
-#include <turbojpeg.h>
+// #include <turbojpeg.h>
 #include <opencv2/opencv.hpp>
 
 #include <fstream>

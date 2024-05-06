@@ -1,0 +1,3 @@
+/home/randymoore/Documents/GitHub/websocketpp_server/VScode/build/CMakeFiles/rebuild_cache.dir
+/home/randymoore/Documents/GitHub/websocketpp_server/VScode/build/CMakeFiles/edit_cache.dir
+/home/randymoore/Documents/GitHub/websocketpp_server/VScode/build/CMakeFiles/wsServer.dir

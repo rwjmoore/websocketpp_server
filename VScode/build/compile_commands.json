@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/randymoore/Documents/GitHub/websocketpp_server/VScode/build",
+  "command": "/usr/bin/c++   -I/home/randymoore/Documents/GitHub/websocketpp_server/VScode/libjpeg-turbo -I/home/randymoore/Documents/GitHub/websocketpp_server/VScode/PATHS -I/home/randymoore/vcpkg/installed/x64-linux/include -isystem /usr/include/opencv4   -pthread -g   -o CMakeFiles/wsServer.dir/main.cpp.o -c /home/randymoore/Documents/GitHub/websocketpp_server/VScode/main.cpp",
+  "file": "/home/randymoore/Documents/GitHub/websocketpp_server/VScode/main.cpp"
+}
+]

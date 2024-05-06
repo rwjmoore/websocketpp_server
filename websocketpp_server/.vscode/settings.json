@@ -1,0 +1,10 @@
+{
+    "cmake.configureOnOpen": true,
+    "files.associations": {
+        "cstddef": "cpp"
+    },
+    "C_Cpp.default.includePath": [
+        
+    ],
+    "cmake.sourceDirectory": "/home/randymoore/Documents/GitHub/websocketpp_server/Visual Studio Code"
+}
