@@ -72,8 +72,9 @@ class decoder {
     int receivedLength = 0;
     int label = 1001;
     bool GZipMode = false;
-    int targetWidth = 700;
+    int targetWidth = 550;
     int targetHeight = 550;
+    std::mutex imShowLock;
     cv::Mat decodedIm = cv::Mat(targetWidth, targetHeight, CV_8UC4);
 
 public:
@@ -110,7 +111,9 @@ public:
         cv::flip(decodedImage, decodedImage, 0); //vertically flip the image
         cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight), 0.0, 0.0, cv::INTER_CUBIC);
 
+        imShowLock.lock();
         destination = decodedImage.clone();
+        imShowLock.unlock();
         
         tjDestroy(turbojpeg);
         delete im;
@@ -188,8 +191,11 @@ public:
             std::thread(&decoder::decodeFunc, this, im, std::ref(decodedIm), size).detach(); // Don't wait for the thread
 
         }
+
+        imShowLock.lock();
         cv::imshow("test", decodedIm);
         cv::waitKey(1);
+        imShowLock.unlock();
 
     }
 
