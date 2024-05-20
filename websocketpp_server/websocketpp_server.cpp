@@ -25,6 +25,20 @@
  * This design *will* fall over under high traffic or DoS conditions. In such
  * cases you are much better off proxying to a real HTTP server for the http
  * requests.
+ * 
+ * This example also includes an onMessage() functionality. In this case, the message
+ * is an MJEPG encoded image. 
+ * 
+ * INSTRUCTIONS FOR MODIFYING/UNDERSTANDING: 
+ * - Modify the onMessage() function to parse the incoming data as desired
+ * - Right now, this server also uses the run() method to send a count to the clients. This is useful for acting as a 
+ *   heartbeat to ensure connectivity is being achieved or for profiling the connection. 
+ * 
+ * NOTE: This code is blocking. I have not tried running it in a separate thread, so you have two options: 
+ * 1. Try running the telemetry server method .run() in a thread 
+ * 2. Create your entire application within the telemetry server. 
+ * 3. There might be a non-blocking version but I have not found it. You can check online
+ * 
  */
 
  //-----------------------------------------> Utilities <----------------------------------------
