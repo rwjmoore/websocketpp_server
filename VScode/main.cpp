@@ -79,8 +79,8 @@ class decoder {
     int receivedLength = 0;
     int label = 1001;
     bool GZipMode = false;
-    int targetWidth = 700;
-    int targetHeight = 550;
+    int targetWidth = 580;
+    int targetHeight = 450;
     cv::Mat decodedIm = cv::Mat(targetWidth, targetHeight, CV_8UC4);
 
 public:
