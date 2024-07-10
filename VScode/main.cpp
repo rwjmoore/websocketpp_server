@@ -79,11 +79,12 @@ class decoder {
     int receivedLength = 0;
     int label = 1001;
     bool GZipMode = false;
-    int targetWidth = 580;
-    int targetHeight = 450;
-    cv::Mat decodedIm = cv::Mat(targetWidth, targetHeight, CV_8UC4);
-
+    int targetWidth = 980;
+    int targetHeight = 430;
+    cv::Mat decodedIm = cv::Mat(targetHeight, targetWidth, CV_8UC4);
+    
 public:
+    int fullFramesDecoded = 0; 
 
     decoder(){
         cv::imshow("POV", decodedIm);
@@ -107,7 +108,7 @@ public:
             delete im;
             return;
         }
-        std::cout << "Successfully read header with dimension (" << width << " x " << height << "), subsampling " << subsamp << ", and color space " << colorspace << ". Image size " << size << std::endl;
+        //std::cout << "Successfully read header with dimension (" << width << " x " << height << "), subsampling " << subsamp << ", and color space " << colorspace << ". Image size " << size << std::endl;
 
         // Allocate buffer for the decompressed image
         std::vector<unsigned char> imageBuffer(width * height * tjPixelSize[TJPF_BGRX]);
@@ -122,10 +123,12 @@ public:
         // DO SOMETHING WITH THE DECODED IMAGE (in this case, show in openCV)
         cv::Mat decodedImage = cv::Mat(height,width, CV_8UC4, imageBuffer.data());
         cv::flip(decodedImage, decodedImage, 0); //vertically flip the image
+        decodedImage = decodedImage( cv::Range(0,height-80), cv::Range(0, width));
         cv::resize(decodedImage, decodedImage, cv::Size(targetWidth, targetHeight), 0.0, 0.0, cv::INTER_CUBIC);
+        
 
         destination = decodedImage.clone();
-        
+        fullFramesDecoded++;
         tjDestroy(turbojpeg);
         delete im;
 
@@ -187,7 +190,7 @@ public:
         if (_offset + chunkLength <= dataLength)
         {
             receivedLength += chunkLength;
-            //std::cout << "ReceivedLength: " << receivedLength << std::endl;
+            std::cout << "ReceivedLength: " << receivedLength << std::endl;
             memcpy(dataByte + _offset, d + metaByteLength, chunkLength);
         }
 
@@ -195,8 +198,12 @@ public:
         {
             // Spawn a short-lived thread to decode the image
             // Create local copies of the relevant variables to work with in a thread without them changing
+            std::cout << "recievedFullPacket: " << std::endl;
+
             uint8_t* im = new uint8_t[dataLength];
             memcpy(im, dataByte, dataLength);
+            std::cout << "copied Data to im " << std::endl;
+
             int size = dataLength;
             //decodeFunc(im,decodedIm, size);
             std::thread(&decoder::decodeFunc, this, im, std::ref(decodedIm), size).detach(); // Don't wait for the thread
@@ -212,13 +219,16 @@ public:
         cv::waitKey(1);
     }
 private:
-    uint8_t* dataByte = new uint8_t[16384];
+    uint8_t* dataByte = new uint8_t[40000];
 };
 //--------------------------------------> Image Decoder End <-----------------------------------------------------
 
 // ------------------------------------> Telemetry Server <-------------------------------------------------------
 class telemetry_server {
 public:
+
+    float windowRefresh = 50; //ms
+
     typedef websocketpp::connection_hdl connection_hdl;
     typedef websocketpp::server<websocketpp::config::asio> server;
     typedef server::message_ptr message_ptr;
@@ -272,7 +282,7 @@ public:
 
     void set_timer() {
         m_timer = m_endpoint.set_timer(
-            1000,
+            windowRefresh,
             websocketpp::lib::bind(
                 &telemetry_server::on_timer,
                 this,
@@ -286,6 +296,7 @@ public:
             // there was an error, stop telemetry
             m_endpoint.get_alog().write(websocketpp::log::alevel::app,
                 "Timer Error: " + ec.message());
+                std::cout <<"TimerError";
             return;
         }
 
@@ -299,8 +310,15 @@ public:
         }
 
         // set timer for next telemetry check
-        set_timer();
+        // std::cout << "FPS: " << float(imDecoder.fullFramesDecoded)/windowRefresh*1000.0;
+        std::cout <<"                 \r";
+
+        printf("FPS: %f", imDecoder.fullFramesDecoded/windowRefresh*1000.0);
+        
+        imDecoder.fullFramesDecoded = 0;
         imDecoder.renderScene();
+        set_timer();
+       
     }
 
     void on_http(connection_hdl hdl) {
@@ -361,7 +379,7 @@ public:
 
     //Action Performed on messageRecieved
     void onMessage(connection_hdl hdl, message_ptr msg) {
-        std::cout << "message Recieved\n";
+        // std::cout << "message Recieved\n";
         std::string message = websocketpp::utility::to_hex(msg->get_payload());
         try {
         std::vector<byte> bytes = hexStringToBytes(message);
@@ -396,7 +414,7 @@ int main(int argc, char* argv[]) {
     uint16_t port = 9003;
 
     if (argc == 1) {
-        std::cout << "No arguments supplied ... Usage: telemetry_server [documentroot] [port] for commandline" << std::endl;
+        std::cout << "No arguments supplied ... Usage: telemetry_server [documentroot] [port] for commandline" << std::endl << "\n";
         
     }
 

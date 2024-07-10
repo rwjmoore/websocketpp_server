@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "thread": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "iosfwd": "cpp"
     }
 }
